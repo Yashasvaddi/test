@@ -5,6 +5,14 @@
 </head>
 <body>
   <h2>Live Video Input (Processed Output Below)</h2>
+
+  <!-- Camera selection dropdown -->
+  <label for="cameraSelect">Select Camera:</label>
+  <select id="cameraSelect">
+    <!-- Options will be populated by JavaScript -->
+  </select>
+  <button onclick="startCamera()">Start Camera</button>
+
   <video id="video" width="320" height="240" autoplay></video>
   <canvas id="canvas" width="320" height="240" style="display:none;"></canvas>
   <img id="processed" width="320" height="240"/>
@@ -14,28 +22,60 @@
     const canvas = document.getElementById('canvas');
     const processed = document.getElementById('processed');
     const ctx = canvas.getContext('2d');
+    const cameraSelect = document.getElementById('cameraSelect');
+    let cameraStream;
 
-    // Access webcam
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => video.srcObject = stream);
+    // Function to get list of available video devices
+    async function getAvailableCameras() {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter(device => device.kind === 'videoinput');
+      
+      // Populate camera select dropdown
+      videoDevices.forEach((device, index) => {
+        const option = document.createElement('option');
+        option.value = index;  // Use device index for selection
+        option.text = device.label || `Camera ${index + 1}`;
+        cameraSelect.appendChild(option);
+      });
+    }
+
+    // Call getAvailableCameras() to populate the dropdown
+    getAvailableCameras();
+
+    // Function to start the camera with selected index
+    function startCamera() {
+      const cameraIndex = cameraSelect.value;
+      const constraints = { video: { deviceId: { exact: cameraIndex } } };
+      
+      navigator.mediaDevices.getUserMedia(constraints)
+        .then(stream => {
+          video.srcObject = stream;
+          cameraStream = stream;
+        })
+        .catch(error => {
+          alert('Error accessing camera: ' + error.message);
+        });
+    }
 
     // Send frames to backend every 300 ms
     setInterval(() => {
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL('image/jpeg');
-      const base64 = dataUrl.split(',')[1];
+      if (cameraStream) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL('image/jpeg');
+        const base64 = dataUrl.split(',')[1];
 
-      fetch('/process_frame', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ frame: base64 })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data.processed_frame) {
-          processed.src = 'data:image/jpeg;base64,' + data.processed_frame;
-        }
-      });
+        fetch('/process_frame', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frame: base64 })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.processed_frame) {
+            processed.src = 'data:image/jpeg;base64,' + data.processed_frame;
+          }
+        });
+      }
     }, 300);
   </script>
 </body>
