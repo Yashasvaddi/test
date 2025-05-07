@@ -15,7 +15,7 @@ def generate_frames():
         else:
             # Example backend processing: convert to grayscale
             gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
+            gray=cv2.flip(gray,1)
             # Convert back to color (to maintain 3 channels for JPEG encoding)
             processed = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
 
