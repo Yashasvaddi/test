@@ -1,4 +1,4 @@
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, Response, request,send_from_directory
 import cv2
 
 app = Flask(__name__)
@@ -28,7 +28,7 @@ def generate_frames():
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return send_from_directory('static', 'index.html')
 
 @app.route('/video_feed')
 def video_feed():
